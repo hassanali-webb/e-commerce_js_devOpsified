@@ -1,4 +1,4 @@
-name: CI/CD - Docker + EKS Deployment
+name: CI/CD - Docker Build & Deploy to EKS
 
 on:
   push:
@@ -9,9 +9,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    # 1️⃣ Checkout code
+    # 1️⃣ Checkout code (IMPORTANT FIX HERE)
     - name: Checkout code
       uses: actions/checkout@v3
+      with:
+        submodules: false   # 🔥 FIXES YOUR ERROR
 
     # 2️⃣ Login to DockerHub
     - name: Login to DockerHub
@@ -20,7 +22,7 @@ jobs:
         username: ${{ secrets.DOCKER_USERNAME }}
         password: ${{ secrets.DOCKER_PASSWORD }}
 
-    # 3️⃣ Build & Push Docker Image (VERSIONED)
+    # 3️⃣ Build & Push Docker Image (versioned)
     - name: Build & Push Image
       uses: docker/build-push-action@v5
       with:
@@ -40,12 +42,12 @@ jobs:
     - name: Update kubeconfig
       run: aws eks update-kubeconfig --name devops-eks-cluster --region us-east-1
 
-    # 6️⃣ Deploy new version to Kubernetes
+    # 6️⃣ Deploy to Kubernetes
     - name: Deploy to EKS
       run: |
         kubectl set image deployment/ecommerce-app ecommerce=hassanali1824/ecommercedevopsified:v${{ github.run_number }}
 
-    # 7️⃣ Verify deployment rollout
+    # 7️⃣ Verify rollout
     - name: Verify rollout
       run: |
         kubectl rollout status deployment/ecommerce-app
