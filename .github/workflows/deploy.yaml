@@ -9,11 +9,12 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    # 1️⃣ Checkout code (IMPORTANT FIX HERE)
+    # 1️⃣ Checkout code (FIXED)
     - name: Checkout code
       uses: actions/checkout@v3
       with:
-        submodules: false   # 🔥 FIXES YOUR ERROR
+        submodules: false
+        fetch-depth: 0
 
     # 2️⃣ Login to DockerHub
     - name: Login to DockerHub
@@ -22,10 +23,11 @@ jobs:
         username: ${{ secrets.DOCKER_USERNAME }}
         password: ${{ secrets.DOCKER_PASSWORD }}
 
-    # 3️⃣ Build & Push Docker Image (versioned)
+    # 3️⃣ Build & Push Docker Image
     - name: Build & Push Image
       uses: docker/build-push-action@v5
       with:
+        context: .
         push: true
         tags: |
           hassanali1824/ecommercedevopsified:v${{ github.run_number }}
@@ -38,16 +40,27 @@ jobs:
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         aws-region: us-east-1
 
-    # 5️⃣ Connect to EKS cluster
-    - name: Update kubeconfig
-      run: aws eks update-kubeconfig --name devops-eks-cluster --region us-east-1
+    # 5️⃣ Install kubectl (IMPORTANT FIX)
+    - name: Install kubectl
+      run: |
+        curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+        chmod +x kubectl
+        sudo mv kubectl /usr/local/bin/
 
-    # 6️⃣ Deploy to Kubernetes
+    # 6️⃣ Update kubeconfig (EKS access)
+    - name: Update kubeconfig
+      run: |
+        aws eks update-kubeconfig --name devops-eks-cluster --region us-east-1
+
+    # 7️⃣ Deploy to Kubernetes
     - name: Deploy to EKS
       run: |
         kubectl set image deployment/ecommerce-app ecommerce=hassanali1824/ecommercedevopsified:v${{ github.run_number }}
-
-    # 7️⃣ Verify rollout
-    - name: Verify rollout
-      run: |
         kubectl rollout status deployment/ecommerce-app
+
+    # 8️⃣ Verify cluster state
+    - name: Get pods
+      run: kubectl get pods
+
+    - name: Get services
+      run: kubectl get svc
